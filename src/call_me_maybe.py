@@ -12,10 +12,12 @@ class CallMeMaybe(BaseModel):
     def __init__(self, args: argparse.Namespace) -> None:
         super().__init__(args=args, model=Small_LLM_Model())
 
-    def extract_prompts(path: str) -> None:
-        # 
+    # def extract_prompts(path: str) -> None:
+
+    #    with open(path, 'r') as prompts:
+    #        #
 
     def run(self) -> None:
-        self.extract_prompts(self.args.input)
+        # self.extract_prompts(self.args.input)
         print(self.args)
         print(self.model._model_name)

@@ -19,9 +19,10 @@ def main():
     call_me_maybe = CallMeMaybe(args=args)
     call_me_maybe.run()
 
-    # if args.visualize:
-    #    from tui import Simulation
-    #    Simulation.launch(args.output)
+    if args.visualize:
+        from src.tui import Simulation
+        sim = Simulation()
+        sim.run()
 
 
 if __name__ == "__main__":

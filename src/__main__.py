@@ -14,15 +14,21 @@ def parse_cla() -> argparse.Namespace:
 
 def main():
 
-    args = parse_cla()
+    try:
+        args = parse_cla()
 
-    call_me_maybe = CallMeMaybe(args=args)
-    call_me_maybe.run()
+        call_me_maybe = CallMeMaybe(args=args)
+        call_me_maybe.run()
+    except Exception as error:
+        print(f"Error in main: {error}")
 
     if args.visualize:
-        from src.tui import Simulation
-        sim = Simulation()
-        sim.run()
+        try:
+            from src.tui import Simulation
+            sim = Simulation()
+            sim.run()
+        except Exception:
+            print("TUI Error: call failed")
 
 
 if __name__ == "__main__":

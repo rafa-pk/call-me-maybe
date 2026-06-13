@@ -1,9 +1,10 @@
+import sys
 import argparse
 from src.call_me_maybe import CallMeMaybe
 
 
 def parse_cla() -> argparse.Namespace:
-    
+   
     parser = argparse.ArgumentParser()
     parser.add_argument("--function_definition", default="data/input/functions_definition.json")
     parser.add_argument("--input", default="data/input/function_calling_tests.json")
@@ -21,6 +22,7 @@ def main():
         call_me_maybe.run()
     except Exception as error:
         print(f"Error in main: {error}")
+        sys.exit(0)
 
     if args.visualize:
         try:

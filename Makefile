@@ -6,7 +6,7 @@
 #    By: rvaz-da- <rvaz-da-@student.s19.be>         +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/06/10 12:29:32 by rvaz-da-          #+#    #+#              #
-#    Updated: 2026/06/10 12:29:32 by rvaz-da-         ###   ########.fr        #
+#    Updated: 2026/06/13 22:07:29 by rvaz-da-         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -34,6 +34,9 @@ lint-strict:
 	uv run mypy --strict src --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 clean:
+	rm .DS_Store
+	rm src/.DS_Store
+	rm llm_sdk/.DS_Store
 	rm -rf src/__pycache__/
 	rm -rf src/.mypy_cache/
 	rm -rf src/.pytest_cache

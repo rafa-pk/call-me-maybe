@@ -34,9 +34,9 @@ lint-strict:
 	uv run mypy --strict src --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 clean:
-	rm .DS_Store
-	rm src/.DS_Store
-	rm llm_sdk/.DS_Store
+	rm -f .DS_Store
+	rm -f src/.DS_Store
+	rm -f llm_sdk/.DS_Store
 	rm -rf src/__pycache__/
 	rm -rf src/.mypy_cache/
 	rm -rf src/.pytest_cache

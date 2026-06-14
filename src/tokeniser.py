@@ -1,6 +1,5 @@
 import sys
 import json
-import ast
 from llm_sdk.llm_sdk import Small_LLM_Model 
 
 
@@ -8,14 +7,13 @@ class Tokeniser:
 
     def __init__(self) -> None:
         self.llm: Small_LLM_Model = Small_LLM_Model()
-        self.vocab_path: str = self.llm.get_path_to_vocab_file() 
-        self.tok_to_id = self._get_vocab()
-        self.merge_rules = self._get_merge_rules()
+        self.tok_to_id: dict[str, str] = self._get_vocab()
+        self.merge_rules: dict[tuple[str, str], int] = self._get_merge_rules()
 
     def _get_vocab(self) -> dict[str, str]:
 
         try:
-            with open(self.vocab_path, 'r') as file:
+            with open(self.llm.get_path_to_vocab_file(), 'r') as file:
                 vocab = json.load(file)
             return vocab
         except Exception as error:
@@ -23,17 +21,19 @@ class Tokeniser:
             sys.exit(1)
 
     def _get_merge_rules(self) -> dict[tuple[str, str], int]:
+        
         try:
-            with open("src/merge_rules.txt", 'r') as file:
-                merge_rules = ast.literal_eval(file.read())
-            return {(ch1, ch2): i for i, (ch1, ch2) in enumerate(merge_rules)}
-        except Exception as m:
-            print(f"Error: error reading merge_rules: {m}")
+            with open(self.llm.get_path_to_merges_file(), 'r') as file:
+                lines = file.read().splitlines()
+                merge_rules = [line.split() for line in lines if not line.startswith('#') and line.strip()]
+            return {(exp1, exp2): i for i, (exp1, exp2) in enumerate(merge_rules)}
+        except Exception as error:
+            print(f"Error: error reading merge_rules: {error}")
             sys.exit(1)
 
     def _tokenise(self, prompt: str) -> list[str]:
-       
-        prompt = [('Ġ' if char == ' ' else char)for char in prompt]
+      
+        prompt = [('Ġ' if char == ' ' else 'Ċ' if char == '\n' else char) for char in prompt]
         while True:
             priority = float("inf")
             best_pair = None
@@ -66,7 +66,7 @@ class Tokeniser:
         except Exception as error:
             print(f"Tokenisation Error: {error}")
             sys.exit(1)
-        
+       
         ids = []
         for token in tokens:
             ids.append(self.tok_to_id[token])

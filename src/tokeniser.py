@@ -7,7 +7,8 @@ class Tokeniser:
 
     def __init__(self) -> None:
         self.llm: Small_LLM_Model = Small_LLM_Model()
-        self.tok_to_id: dict[str, str] = self._get_vocab()
+        self.tok_to_id: dict[str, int] = self._get_vocab()
+        self.id_to_tok: dict[int, str] = {id: tok for tok, id in self.tok_to_id.items()}
         self.merge_rules: dict[tuple[str, str], int] = self._get_merge_rules()
 
     def _get_vocab(self) -> dict[str, str]:
@@ -71,3 +72,12 @@ class Tokeniser:
         for token in tokens:
             ids.append(self.tok_to_id[token])
         return ids
+
+    def decode(self, ids: list[int]) -> str:
+
+        tokens: list[str] = []
+
+        for id in ids:
+            tokens.append(self.id_to_tok[id])
+        decoded_str = "".join(tokens).replace("Ġ", " ").replace("Ċ", "\n")
+        return decoded_str

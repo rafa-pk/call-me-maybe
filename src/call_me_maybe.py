@@ -124,10 +124,30 @@ class CallMeMaybe(BaseModel):
                 break
         return str_id
 
-    # def _generate_bool(self, existing_ids: list[int]) -> list[int]
+    def _generate_bool(self, existing_ids: list[int]) -> list[int]:
 
-        # bool parameters gen logic
+        bool_id: list[int] = []
+        bool_str: str = ""
+        total_ids: list[int] = existing_ids.copy()
 
+        while True:
+            logits = self.model.get_logits_from_input_ids(total_ids)
+            for tok_id in range(len(logits)):
+                tok_str = self.tokeniser.id_to_tok.get(tok_id)
+                if tok_str is None:
+                    logits[tok_id] = float("-inf")
+                    continue
+                token_str = tok_str.replace("Ġ", " ").replace("Ċ", "\n")
+                candidate = bool_str + token_str
+                if not (("true".startswith(candidate)) or ("false".startswith(candidate))):
+                    logits[tok_id] = float("-inf")
+            next_id = int(logits.index(max(logits)))
+            bool_id.append(next_id)
+            total_ids.append(next_id)
+            bool_str += self.tokeniser.id_to_tok[next_id].replace("Ġ", " ").replace("Ċ", "\n")
+            if bool_str in ["true", "false"]:
+                break
+        return bool_id
     
     def _generate_val(self, existing_ids: list[int], arg_type: str) -> list[int]:
 

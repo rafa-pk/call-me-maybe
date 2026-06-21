@@ -199,7 +199,7 @@ class CallMeMaybe(BaseModel):
         print(generated)
         return json.loads(generated)
 
-    def _create_output_file(self, output: dict[str, Any], file_name: str) -> None:
+    def _create_output_file(self, output: list[dict[str, Any]], file_name: str) -> None:
 
         try:
             with open(file_name, 'w') as file:

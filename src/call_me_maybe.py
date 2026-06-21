@@ -197,7 +197,16 @@ class CallMeMaybe(BaseModel):
         generated_ids += self.tokeniser.encode("}}")
         generated = self.tokeniser.decode(generated_ids[prompt_len:])
         print(generated)
-        # return json.loads(generated)
+        return json.loads(generated)
+
+    def _create_output_file(self, output: dict[str, Any], file_name: str) -> None:
+
+        try:
+            with open(file_name, 'w') as file:
+                file.write(json.dumps(output))
+        except Exception as error:
+            print(f"Error creating output file: {error}")
+            sys.exit(1)
 
     def run(self) -> None:
 
@@ -218,13 +227,12 @@ class CallMeMaybe(BaseModel):
                         "Prompt: Greet shrek\n"
                         '{"name": "fn_greet", "parameters": {"name": "shrek"}}\n\n'
                         "My Prompt: ")
-        # output = []
+        output = []
 
         for prompt in prompts:
             complete_prompt = context + prompt.prompt + '\n'
             ids = self.tokeniser.encode(complete_prompt)
-            # entry = {"prompt": prompt.prompt}
-            # entry.update(
-            self._constrained_decoding(ids, functions)  # )
-            # output.append(entry)
-        # self._create_output_file(output)
+            entry = {"prompt": prompt.prompt}
+            entry.update(self._constrained_decoding(ids, functions))
+            output.append(entry)
+        self._create_output_file(entry, self.args.output)

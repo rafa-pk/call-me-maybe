@@ -44,7 +44,11 @@ class CallMeMaybe(BaseModel):
         existing_ids: list[int] = generated_ids.copy()
         fn_name_str: str = ""
         fn_name_ids: list[int] = []
+        initial_quotes: list[int] = self.tokeniser.encode('"')
 
+        fn_name_str += '"'
+        fn_name_ids += initial_quotes
+        existing_ids += initial_quotes
         while True:
             logits = self.model.get_logits_from_input_ids(existing_ids)
             for tok_id in range(len(logits)):
@@ -68,7 +72,7 @@ class CallMeMaybe(BaseModel):
 
         value_id: list[int] = []
         value_str: str = ""
-        total_ids = existing_ids.copy()
+        total_ids: list[int] = existing_ids.copy()
 
         while True:
             logits = self.model.get_logits_from_input_ids(total_ids)
@@ -93,13 +97,38 @@ class CallMeMaybe(BaseModel):
 
     def _generate_str(self, existing_ids: list[int]) -> list[int]:
 
-        # str parameters gen logic
+        str_id: list[int] = []
+        str_str: str = ""
+        total_ids: list[int] = existing_ids.copy()
+        initial_quotes: list[int] = self.tokeniser.encode('"')
+        
+        str_str += '"'
+        str_id += initial_quotes
+        total_ids += initial_quotes
+        while True:
+            logits = self.model.get_logits_from_input_ids(total_ids)
+            for tok_id in range(len(logits)):
+                tok_str = self.tokeniser.id_to_tok.get(tok_id)
+                if tok_str is None:
+                    logits[tok_id] = float("-inf")
+                    continue
+                token_str = tok_str.replace("Ġ", " ").replace("Ċ", "\n")
+                if token_str != '"' and any(c in token_str for c in '{}[]'):
+                    logits[tok_id] = float("-inf") 
+            next_id = int(logits.index(max(logits)))
+            next_str = self.tokeniser.id_to_tok[next_id].replace("Ġ", " ").replace("Ċ", "\n")
+            str_id.append(next_id)
+            total_ids.append(next_id)
+            str_str += next_str
+            if next_str.endswith('"'):
+                break
+        return str_id
 
-
-    def _generate_bool(self, existing_ids: list[int]) -> list[int]
+    # def _generate_bool(self, existing_ids: list[int]) -> list[int]
 
         # bool parameters gen logic
 
+    
     def _generate_val(self, existing_ids: list[int], arg_type: str) -> list[int]:
 
         if arg_type == "number":
@@ -116,7 +145,7 @@ class CallMeMaybe(BaseModel):
         params_ids: list[int] = []
 
         for i, (arg_name, arg_type) in enumerate(params.items()):
-            param = self.tokeniser.encode(f'{arg_name}": ')
+            param = self.tokeniser.encode(f'"{arg_name}": ')
             existing_ids += param
             params_ids += param
             val = self._generate_val(existing_ids, arg_type.type)
@@ -131,7 +160,7 @@ class CallMeMaybe(BaseModel):
     def _constrained_decoding(self, ids: list[int], functions: dict[str, FunctionDef]) -> dict[str, Any]:
 
         prompt_len = len(ids)
-        generated_ids: list[int] = ids + self.tokeniser.encode('{"name": "')
+        generated_ids: list[int] = ids + self.tokeniser.encode('{"name": ')
         try:
             fn_name_id: list[int] = self._generate_fn_name(generated_ids, functions)
         except Exception as error:
@@ -139,7 +168,7 @@ class CallMeMaybe(BaseModel):
             sys.exit(1)
         generated_ids += fn_name_id
         fn_name = self.tokeniser.decode(fn_name_id)
-        generated_ids += self.tokeniser.encode('", "parameters": {"')
+        generated_ids += self.tokeniser.encode('", "parameters": {')
         try:
             generated_ids += self._generate_params(generated_ids, fn_name, functions)
         except Exception as error:

@@ -1,10 +1,11 @@
 import argparse
 import json
 import sys
+import re
 from typing import Any
 from pydantic import BaseModel, ConfigDict
 from llm_sdk.llm_sdk import Small_LLM_Model
-from src.validation_classes import FunctionDef, Prompt
+from src.validation_classes import FunctionDef, Prompt, DataType
 from src.tokeniser import Tokeniser
 
 
@@ -40,7 +41,7 @@ class CallMeMaybe(BaseModel):
 
     def _generate_fn_name(self, generated_ids: list[int], functions: dict[str, FunctionDef]) -> list[int]:
 
-        existing_ids = generated_ids.copy()
+        existing_ids: list[int] = generated_ids.copy()
         fn_name_str: str = ""
         fn_name_ids: list[int] = []
 
@@ -63,11 +64,69 @@ class CallMeMaybe(BaseModel):
                 break
         return fn_name_ids
 
-    # def _generate_params(generated_ids: list[int], fn_name: str, functions: dict[str, FunctionDef]) -> list[int]:
+    def _generate_num(self, existing_ids: list[int]) -> list[int]:
 
-    #    existing_ids = generated_ids.copy()
+        value_id: list[int] = []
+        value_str: str = ""
+        total_ids = existing_ids.copy()
 
-    #    for 
+        while True:
+            logits = self.model.get_logits_from_input_ids(total_ids)
+            unconstrained_choice = int(logits.index(max(logits)))
+            unconstrained = self.tokeniser.id_to_tok[unconstrained_choice].replace("Ġ", " ").replace("Ċ", "\n")
+            if re.fullmatch(r"-?\d*\.?\d*", value_str + unconstrained) is None and value_str != "":
+                break
+            for tok_id in range(len(logits)):
+                tok_str = self.tokeniser.id_to_tok.get(tok_id)
+                if tok_str is None:
+                    logits[tok_id] = float("-inf")
+                    continue
+                token_str = tok_str.replace("Ġ", " ").replace("Ċ", "\n")
+                candidate = value_str + token_str
+                if re.fullmatch(r"-?\d*\.?\d*", candidate) is None and value_str != "":
+                    logits[tok_id] = float("-inf")
+            next_id = int(logits.index(max(logits)))
+            value_id.append(next_id)
+            total_ids.append(next_id)
+            value_str += self.tokeniser.id_to_tok[next_id].replace("Ġ", " ").replace("Ċ", "\n")
+        return value_id
+
+    def _generate_str(self, existing_ids: list[int]) -> list[int]:
+
+        # str parameters gen logic
+
+
+    def _generate_bool(self, existing_ids: list[int]) -> list[int]
+
+        # bool parameters gen logic
+
+    def _generate_val(self, existing_ids: list[int], arg_type: str) -> list[int]:
+
+        if arg_type == "number":
+            return self._generate_num(existing_ids)
+        elif arg_type == "string":
+            return self._generate_str(existing_ids)
+        elif arg_type == "bool":
+            return self._generate_bool(existing_ids)
+
+    def _generate_params(self, generated_ids: list[int], fn_name: str, functions: dict[str, FunctionDef]) -> list[int]:
+
+        existing_ids: list[int] = generated_ids.copy()
+        params: dict[str, DataType] = functions[fn_name].parameters
+        params_ids: list[int] = []
+
+        for i, (arg_name, arg_type) in enumerate(params.items()):
+            param = self.tokeniser.encode(f'{arg_name}": ')
+            existing_ids += param
+            params_ids += param
+            val = self._generate_val(existing_ids, arg_type.type)
+            existing_ids += val
+            params_ids += val
+            if i < len(params) - 1:
+                comma = self.tokeniser.encode(', ')
+                existing_ids += comma
+                params_ids += comma 
+        return params_ids
 
     def _constrained_decoding(self, ids: list[int], functions: dict[str, FunctionDef]) -> dict[str, Any]:
 
@@ -81,13 +140,14 @@ class CallMeMaybe(BaseModel):
         generated_ids += fn_name_id
         fn_name = self.tokeniser.decode(fn_name_id)
         generated_ids += self.tokeniser.encode('", "parameters": {"')
-        # try:
-        #    generated_ids += self._generate_params(generated_ids, fn_name, functions)
-        # except Exception as error:
-        #    print(f"Error generating function parameters: {error}")
-        #    sys.exit(1)
+        try:
+            generated_ids += self._generate_params(generated_ids, fn_name, functions)
+        except Exception as error:
+            print(f"Error generating function parameters: {error}")
+            sys.exit(1)
         generated_ids += self.tokeniser.encode("}}")
         generated = self.tokeniser.decode(generated_ids[prompt_len:])
+        print(generated)
         # return json.loads(generated)
 
     def run(self) -> None:

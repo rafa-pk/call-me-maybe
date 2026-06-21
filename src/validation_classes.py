@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Literal
 
 
 class Prompt(BaseModel):
@@ -8,7 +9,7 @@ class Prompt(BaseModel):
 
 class DataType(BaseModel):
 
-    type: str 
+    type: Literal["number", "string", "bool"] 
 
 
 class FunctionDef(BaseModel):

@@ -101,6 +101,8 @@ class CallMeMaybe(BaseModel):
             value_id.append(next_id)
             total_ids.append(next_id)
             value_str += self.tokeniser.id_to_tok[next_id].replace("Ġ", " ").replace("Ċ", "\n")
+        if "." not in value_str:
+            value_id += self.tokeniser.encode(".0")
         return value_id
 
     def _generate_str(self, existing_ids: list[int]) -> list[int]:

@@ -28,7 +28,18 @@ class CallMeMaybe(BaseModel):
             return {func["name"]: FunctionDef(**func) for func in raw_functions}
         except Exception as error:
             print(f"JSon Error: {function_defs}: {error}")
-            sys.exit(1) 
+            sys.exit(1)
+
+    def _build_function_demo(self, functions: dict[str, FunctionDef]) -> str:
+
+        lines = []
+        for name, func in functions.items():
+            params = ", ".join(
+                f"{param_name}: {param_type.type}"
+                for param_name, param_type in func.parameters.items()
+            )
+            lines.append(f"- {name}({params}): {func.description}")
+        return "\n".join(lines) 
 
     def _extract_prompts(self, prompts: str) -> list[Prompt]:
 
@@ -171,13 +182,14 @@ class CallMeMaybe(BaseModel):
             if i < len(params) - 1:
                 comma = self.tokeniser.encode(', ')
                 existing_ids += comma
-                params_ids += comma 
+                params_ids += comma
         return params_ids
 
     def _constrained_decoding(self, ids: list[int], functions: dict[str, FunctionDef]) -> dict[str, Any]:
 
         prompt_len = len(ids)
         generated_ids: list[int] = ids + self.tokeniser.encode('{"name": "')
+        print('{"name": "')
         try:
             fn_name_id: list[int] = self._generate_fn_name(generated_ids, functions)
         except Exception as error:
@@ -186,11 +198,13 @@ class CallMeMaybe(BaseModel):
         generated_ids += fn_name_id
         fn_name = self.tokeniser.decode(fn_name_id)
         generated_ids += self.tokeniser.encode('", "parameters": {')
+        print(self.tokeniser.decode(generated_ids[prompt_len:]))
         try:
             generated_ids += self._generate_params(generated_ids, fn_name, functions)
         except Exception as error:
             print(f"Error generating function parameters: {error}")
             sys.exit(1)
+        print(self.tokeniser.decode(generated_ids[prompt_len:]))
         generated_ids += self.tokeniser.encode("}}")
         generated = self.tokeniser.decode(generated_ids[prompt_len:])
         print(generated)
@@ -211,6 +225,7 @@ class CallMeMaybe(BaseModel):
     def run(self) -> None:
 
         functions: dict[str, FunctionDef] = self._extract_functions(self.args.functions_definition)
+        functions_demo: str = self._build_function_demo(functions)
         prompts: list[Prompt] = self._extract_prompts(self.args.input)
         context: str = ("You are a precise function-calling assistant. "
                         "Given a natural language prompt, you must identify the "
@@ -219,7 +234,7 @@ class CallMeMaybe(BaseModel):
                         '{"name": "fn_function_name", "parameters": {"arg1": '
                         'value1, "arg2": value2}}\n\n'
                         "Available functions: \n"
-                        f"{functions}"
+                        f"{functions_demo}"
                         "\nExample:\n"
                         "Prompt: What is the sum of 2 and 3?\n"
                         '{"name": "fn_add_numbers", "parameters": {"a": 2.0, '
@@ -230,6 +245,7 @@ class CallMeMaybe(BaseModel):
         output = []
 
         for prompt in prompts:
+            print(f"\nProcessing '{prompt.prompt}'...")
             complete_prompt = context + prompt.prompt + '\n'
             ids = self.tokeniser.encode(complete_prompt)
             entry = {"prompt": prompt.prompt}

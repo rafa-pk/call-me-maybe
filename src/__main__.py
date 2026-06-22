@@ -28,7 +28,7 @@ def main():
         try:
             from src.tui import Simulation
             sim = Simulation()
-            sim.run()
+            sim.retrace()
         except Exception:
             print("TUI Error: call failed")
 

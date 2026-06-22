@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 import re
+import os
 from typing import Any
 from pydantic import BaseModel, ConfigDict
 from llm_sdk.llm_sdk import Small_LLM_Model
@@ -44,11 +45,7 @@ class CallMeMaybe(BaseModel):
         existing_ids: list[int] = generated_ids.copy()
         fn_name_str: str = ""
         fn_name_ids: list[int] = []
-        initial_quotes: list[int] = self.tokeniser.encode('"')
-
-        fn_name_str += '"'
-        fn_name_ids += initial_quotes
-        existing_ids += initial_quotes
+ 
         while True:
             logits = self.model.get_logits_from_input_ids(existing_ids)
             for tok_id in range(len(logits)):
@@ -113,14 +110,14 @@ class CallMeMaybe(BaseModel):
                     logits[tok_id] = float("-inf")
                     continue
                 token_str = tok_str.replace("Ġ", " ").replace("Ċ", "\n")
-                if token_str != '"' and any(c in token_str for c in '{}[]'):
+                if token_str != '"' and any('"' in token_str or c in token_str for c in '{}[]'):
                     logits[tok_id] = float("-inf") 
             next_id = int(logits.index(max(logits)))
             next_str = self.tokeniser.id_to_tok[next_id].replace("Ġ", " ").replace("Ċ", "\n")
             str_id.append(next_id)
             total_ids.append(next_id)
             str_str += next_str
-            if next_str.endswith('"'):
+            if next_str == '"':
                 break
         return str_id
 
@@ -180,7 +177,7 @@ class CallMeMaybe(BaseModel):
     def _constrained_decoding(self, ids: list[int], functions: dict[str, FunctionDef]) -> dict[str, Any]:
 
         prompt_len = len(ids)
-        generated_ids: list[int] = ids + self.tokeniser.encode('{"name": ')
+        generated_ids: list[int] = ids + self.tokeniser.encode('{"name": "')
         try:
             fn_name_id: list[int] = self._generate_fn_name(generated_ids, functions)
         except Exception as error:
@@ -199,11 +196,14 @@ class CallMeMaybe(BaseModel):
         print(generated)
         return json.loads(generated)
 
-    def _create_output_file(self, output: list[dict[str, Any]], file_name: str) -> None:
+    def _create_output_file(self, output: list[dict[str, Any]]) -> None:
 
         try:
-            with open(file_name, 'w') as file:
-                file.write(json.dumps(output))
+            output_dir = os.path.dirname(self.args.output)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            with open(self.args.output, 'w') as file:
+                file.write(json.dumps(output, indent=4))
         except Exception as error:
             print(f"Error creating output file: {error}")
             sys.exit(1)
@@ -235,4 +235,4 @@ class CallMeMaybe(BaseModel):
             entry = {"prompt": prompt.prompt}
             entry.update(self._constrained_decoding(ids, functions))
             output.append(entry)
-        self._create_output_file(entry, self.args.output)
+        self._create_output_file(output)

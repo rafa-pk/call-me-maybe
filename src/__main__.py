@@ -8,7 +8,7 @@ def parse_cla() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--functions_definition", default="data/input/functions_definition.json")
     parser.add_argument("--input", default="data/input/function_calling_tests.json")
-    parser.add_argument("--output", default="data/output/function_calls.json")
+    parser.add_argument("--output", default="data/output/function_calling_results.json")
     parser.add_argument("--visualize", action="store_true")
     return parser.parse_args()
 
